@@ -1,0 +1,87 @@
+@page "/admin/dashboard"
+@using CustomerRegApp.Models
+@using CustomerRegApp.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Admin Dashboard</h3>
+
+<div class="d-flex justify-content-between mb-3">
+    <span>Welcome Admin</span>
+    <button class="btn btn-secondary" @onclick="Logout">Logout</button>
+</div>
+
+@if (users == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Net Worth</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Id</td>
+                    <td>@user.Username</td>
+                    <td>@user.Gmail</td>
+                    <td>@user.FirstName @user.LastName</td>
+                    <td>@user.NetWorth</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" @onclick="() => EditUser(user.Id)">Edit</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(user.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<UserEntity>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await AuthService.GetAllUsersAsync();
+    }
+
+    private void EditUser(int id)
+    {
+        Navigation.NavigateTo($"/admin/edit/{id}");
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        bool confirmed = true; // In real app, show modal confirmation.
+        if (confirmed)
+        {
+            await AuthService.DeleteUserAsync(id);
+            await LoadUsers();
+        }
+    }
+
+    private void Logout()
+    {
+        ((CustomerRegApp.Services.CustomAuthenticationStateProvider)AuthStateProvider).MarkUserAsLoggedOut();
+        Navigation.NavigateTo("/");
+    }
+}

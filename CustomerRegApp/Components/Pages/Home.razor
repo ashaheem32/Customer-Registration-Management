@@ -1,0 +1,40 @@
+﻿@page "/home"
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@attribute [Authorize(Roles = "User")]
+
+<h3>Welcome, @username</h3>
+<p>You have successfully logged in.</p>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="GoToEditProfile">Edit Profile</button>
+    <button class="btn btn-secondary" @onclick="Logout">Logout</button>
+</div>
+
+@code {
+    private string username = "User";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            username = user.Identity.Name ?? "User";
+        }
+    }
+
+    private void GoToEditProfile()
+    {
+        Navigation.NavigateTo("/user/edit");
+    }
+
+    private void Logout()
+    {
+        ((CustomerRegApp.Services.CustomAuthenticationStateProvider)AuthStateProvider).MarkUserAsLoggedOut();
+        Navigation.NavigateTo("/");
+    }
+}

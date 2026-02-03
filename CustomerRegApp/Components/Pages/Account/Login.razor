@@ -1,0 +1,96 @@
+@page "/"
+@using CustomerRegApp.Services
+@using CustomerRegApp.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Login</h3>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link @(IsAdmin ? "" : "active")" href="javascript:void(0)" @onclick="() => IsAdmin = false">User Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(IsAdmin ? "active" : "")" href="javascript:void(0)" @onclick="() => IsAdmin = true">Admin Login</a>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger">@ErrorMessage</div>
+                }
+
+                <div class="mb-3">
+                    <label>Username</label>
+                    <input class="form-control" @bind="Username" />
+                </div>
+                @if (!IsAdmin)
+                {
+                    <div class="mb-3">
+                        <label>Gmail</label>
+                        <input class="form-control" @bind="Gmail" />
+                    </div>
+                }
+                <div class="mb-3">
+                    <label>Password</label>
+                    <input type="password" class="form-control" @bind="Password" />
+                </div>
+
+                <button class="btn btn-primary" @onclick="HandleLogin">Login</button>
+                
+                @if (!IsAdmin)
+                {
+                    <button class="btn btn-link" @onclick='() => Navigation.NavigateTo("/register")'>Register New User</button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsAdmin = false;
+    private string Username = "";
+    private string Gmail = "";
+    private string Password = "";
+    private string ErrorMessage = "";
+
+    private async Task HandleLogin()
+    {
+        ErrorMessage = "";
+        
+        if (IsAdmin)
+        {
+            if (AuthService.AdminLogin(Username, Password))
+            {
+                ((CustomAuthenticationStateProvider)AuthStateProvider).MarkUserAsAuthenticated(Username, "Admin");
+                Navigation.NavigateTo("/admin/dashboard");
+            }
+            else
+            {
+                ErrorMessage = "Invalid Admin Credentials";
+            }
+        }
+        else
+        {
+            var user = await AuthService.LoginAsync(Username, Gmail, Password);
+            if (user != null)
+            {
+                ((CustomAuthenticationStateProvider)AuthStateProvider).MarkUserAsAuthenticated(user.Username, "User");
+                Navigation.NavigateTo("/home");
+            }
+            else
+            {
+                ErrorMessage = "Invalid User Credentials";
+            }
+        }
+    }
+}

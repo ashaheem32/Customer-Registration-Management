@@ -1,0 +1,233 @@
+@page "/user/edit"
+@using CustomerRegApp.Models
+@using CustomerRegApp.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@attribute [Authorize(Roles = "User")]
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<h3>Edit Profile</h3>
+
+@if (User == null)
+{
+    @if (IsLoading)
+    {
+        <p>Loading your profile...</p>
+    }
+    else
+    {
+        <p class="text-danger">Failed to load profile. Please relogin.</p>
+    }
+}
+else
+{
+    @if (ShowSuccess)
+    {
+        <div class="alert alert-success">Profile updated successfully!</div>
+    }
+
+    <EditForm Model="User" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="card mb-3">
+            <div class="card-header">Account Details</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Username (Cannot be changed)</label>
+                    <InputText class="form-control" @bind-Value="User.Username" disabled />
+                </div>
+                <div class="mb-3">
+                    <label>Gmail</label>
+                    <InputText class="form-control" @bind-Value="User.Gmail" />
+                </div>
+                 <div class="mb-3">
+                    <label>Password</label>
+                    <InputText class="form-control" @bind-Value="User.PasswordHash" />
+                    <small>Currently stored as plain text for this demo.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Personal Information</div>
+            <div class="card-body">
+                <div class="mb-3">
+                     <label>First Name</label>
+                     <InputText class="form-control" @bind-Value="User.FirstName" />
+                </div>
+                <div class="mb-3">
+                     <label>Last Name</label>
+                     <InputText class="form-control" @bind-Value="User.LastName" />
+                </div>
+                <div class="mb-3">
+                     <label>Date of Birth</label>
+                     <InputDate class="form-control" @bind-Value="User.DateOfBirth" />
+                </div>
+                <div class="mb-3">
+                     <label>Gender</label>
+                     <InputSelect class="form-control" @bind-Value="User.Gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </InputSelect>
+                </div>
+                 <div class="mb-3">
+                    <label>Address</label>
+                    <InputTextArea class="form-control" @bind-Value="User.Address" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Financial Information</div>
+            <div class="card-body">
+                 <div class="mb-3">
+                    <label>Net Worth</label>
+                    <InputNumber class="form-control" @bind-Value="User.NetWorth" />
+                </div>
+                <div class="mb-3">
+                    <label>Monthly Income</label>
+                    <InputNumber class="form-control" @bind-Value="User.MonthlyIncome" />
+                </div>
+                 <div class="mb-3">
+                    <label>Occupation</label>
+                    <InputText class="form-control" @bind-Value="User.Occupation" />
+                </div>
+                 <div class="mb-3">
+                    <label>Marital Status</label>
+                     <InputSelect class="form-control" @bind-Value="User.MaritalStatus">
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                    </InputSelect>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Documents</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label>Upload Documents (Max 3, &lt; 5MB each)</label>
+                    <InputFile OnChange="LoadBoxFiles" multiple />
+                </div>
+                
+                @if (User.Documents.Any())
+                {
+                    <label>Uploaded Documents:</label>
+                    <ul class="list-group">
+                        @foreach (var doc in User.Documents)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@doc.FileName (@doc.ContentType) - @doc.Content.Length bytes</span>
+                                <button type="button" class="btn btn-danger btn-sm" @onclick="() => RemoveDocument(doc)">Remove</button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="text-danger mb-2">@ErrorMessage</div>
+
+        <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">Save Changes</button>
+        @if(IsSubmitting) { <span class="ms-2">Saving...</span> }
+        <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+
+    </EditForm>
+}
+
+@code {
+    private UserEntity? User;
+    private bool IsLoading = true;
+    private bool ShowSuccess = false;
+    private bool IsSubmitting = false;
+    private string ErrorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var userPrincipal = authState.User;
+
+        if (userPrincipal.Identity != null && userPrincipal.Identity.IsAuthenticated)
+        {
+            var username = userPrincipal.Identity.Name;
+            if (!string.IsNullOrEmpty(username))
+            {
+                User = await AuthService.GetUserByUsernameAsync(username);
+            }
+        }
+        IsLoading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (User != null)
+        {
+            IsSubmitting = true;
+            ErrorMessage = "";
+            try
+            {
+                await AuthService.UpdateUserAsync(User);
+                ShowSuccess = true;
+                // Hide success message after 3 seconds
+                await Task.Delay(3000);
+                ShowSuccess = false;
+            }
+            catch(Exception ex)
+            {
+                ErrorMessage = "Error updating profile: " + ex.Message;
+            }
+            finally
+            {
+                IsSubmitting = false;
+            }
+        }
+    }
+
+    private async Task LoadBoxFiles(InputFileChangeEventArgs e)
+    {
+        ErrorMessage = "";
+        if (User == null) return;
+
+        foreach (var file in e.GetMultipleFiles(3))
+        {
+            try
+            {
+                using var stream = file.OpenReadStream(5 * 1024 * 1024); // 5MB limit
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                
+                User.Documents.Add(new UserDocument
+                {
+                    FileName = file.Name,
+                    ContentType = file.ContentType,
+                    Content = ms.ToArray(),
+                    UserId = User.Id 
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"File upload failed: {ex.Message}";
+            }
+        }
+    }
+
+    private void RemoveDocument(UserDocument doc)
+    {
+        if (User != null)
+        {
+            User.Documents.Remove(doc);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/home");
+    }
+}

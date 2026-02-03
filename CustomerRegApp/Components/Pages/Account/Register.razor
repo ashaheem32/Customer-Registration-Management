@@ -1,0 +1,113 @@
+@page "/register"
+@using CustomerRegApp.Models
+@using CustomerRegApp.Services
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<h3>User Registration</h3>
+
+<div class="card">
+    <div class="card-body">
+        @if (ShowSuccessPopup)
+        {
+            <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Registration Successful</h5>
+                        </div>
+                        <div class="modal-body">
+                            <p>You have successfully registered! Please login to complete your profile.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" @onclick="GoToLogin">Go to Login</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger">@ErrorMessage</div>
+        }
+
+        <EditForm Model="User" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label>Username (Unique)</label>
+                <InputText class="form-control" @bind-Value="User.Username" @onblur="CheckUsername" />
+                <small class="text-danger">@UsernameError</small>
+            </div>
+            <div class="mb-3">
+                <label>Gmail</label>
+                <InputText class="form-control" @bind-Value="User.Gmail" />
+            </div>
+            <div class="mb-3">
+                <label>Password</label>
+                <InputText type="password" class="form-control" @bind-Value="User.PasswordHash" />
+                <small class="text-muted">Must contain 1 uppercase, 1 number, 1 special char, min 8 chars.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@IsSubmitting">Register</button>
+            <div class="mt-2 text-info">
+                @if(IsSubmitting) { <span>Submitting...</span> }
+            </div>
+            
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private UserEntity User = new UserEntity { DateOfBirth = DateOnly.FromDateTime(DateTime.Now.AddYears(-18)) };
+    private string UsernameError = "";
+    private string ErrorMessage = "";
+    private bool IsSubmitting = false;
+    private bool ShowSuccessPopup = false;
+
+    private async Task CheckUsername()
+    {
+        UsernameError = "";
+        if (string.IsNullOrWhiteSpace(User.Username)) return;
+
+        bool exists = await AuthService.IsUserExistsAsync(User.Username);
+        if (exists)
+        {
+            UsernameError = "Username is already taken.";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        ErrorMessage = "";
+        if (!string.IsNullOrEmpty(UsernameError))
+        {
+            ErrorMessage = "Please fix errors.";
+            return;
+        }
+
+        IsSubmitting = true;
+        try 
+        {
+            await AuthService.RegisterUserAsync(User);
+            ShowSuccessPopup = true;
+        }
+        catch(Exception ex)
+        {
+            ErrorMessage = "Error saving user: " + ex.Message;
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
