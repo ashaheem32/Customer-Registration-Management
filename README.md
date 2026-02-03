@@ -10,7 +10,7 @@ A .NET Blazor application for customer registration management.
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/ashaheem32/Customer-Registration-Management.git
     cd CustomerRegApp
     ```
 
